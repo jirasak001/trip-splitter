@@ -1,5 +1,5 @@
 'use client'
-
+// redeploy
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -161,7 +161,6 @@ export default function TripPage() {
               tripId={id}
               onUpdate={fetchExpenses}
             />
-
             <ExpenseList
               expenses={expenses}
               splits={splits}
