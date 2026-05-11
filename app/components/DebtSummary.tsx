@@ -1,22 +1,40 @@
-import { Member, Expense } from '@/app/trip/[id]/page'
+import { Member, Expense, Split } from '@/app/trip/[id]/page'
 
-type Props = { going: Member[]; expenses: Expense[] }
+type Props = { going: Member[]; expenses: Expense[]; splits: Split[] }
 
-export default function DebtSummary({ going, expenses }: Props) {
+export default function DebtSummary({ going, expenses, splits }: Props) {
   const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const perPerson = going.length > 0 ? totalAmount / going.length : 0
 
-  // คำนวณยอด balance ของแต่ละคน
+  const shouldPay: Record<string, number> = {}
   const paid: Record<string, number> = {}
-  going.forEach(m => { paid[m.id] = 0 })
+  going.forEach(m => {
+    shouldPay[m.id] = 0
+    paid[m.id] = 0
+  })
+
   expenses.forEach(e => {
-    if (paid[e.paid_by] !== undefined) paid[e.paid_by] += e.amount
+    const expenseSplits = splits.filter(s => s.expense_id === e.id)
+    const splitCount = expenseSplits.length
+
+    if (splitCount > 0) {
+      const perPerson = e.amount / splitCount
+      expenseSplits.forEach(s => {
+        if (shouldPay[s.member_id] !== undefined) {
+          shouldPay[s.member_id] += perPerson
+        }
+      })
+    }
+
+    if (paid[e.paid_by] !== undefined) {
+      paid[e.paid_by] += e.amount
+    }
   })
 
   const owes: Record<string, number> = {}
-  going.forEach(m => { owes[m.id] = paid[m.id] - perPerson })
+  going.forEach(m => {
+    owes[m.id] = paid[m.id] - shouldPay[m.id]
+  })
 
-  // คำนวณว่าใครโอนให้ใคร
   const creditors = going.filter(m => owes[m.id] > 0.01).map(m => ({ ...m, amount: owes[m.id] }))
   const debtors = going.filter(m => owes[m.id] < -0.01).map(m => ({ ...m, amount: Math.abs(owes[m.id]) }))
 
@@ -36,14 +54,13 @@ export default function DebtSummary({ going, expenses }: Props) {
 
   return (
     <>
-      {/* สรุปยอดรวม */}
       <div className="bg-gray-800 rounded-2xl p-4 mt-6">
         <h2 className="font-semibold mb-1">🧮 สรุปค่าใช้จ่าย</h2>
-        <p className="text-gray-400 text-sm mb-3">รวม ฿{totalAmount.toLocaleString()} | คนละ ฿{perPerson.toFixed(2)}</p>
+        <p className="text-gray-400 text-sm mb-3">รวมทั้งหมด ฿{totalAmount.toLocaleString()}</p>
         {going.map(m => {
           const balance = owes[m.id] || 0
-          const isOwed = balance > 0
-          const isOwing = balance < 0
+          const isOwed = balance > 0.01
+          const isOwing = balance < -0.01
           return (
             <div key={m.id} className="flex justify-between py-2 border-b border-gray-700">
               <span>{m.name}</span>
@@ -57,8 +74,7 @@ export default function DebtSummary({ going, expenses }: Props) {
         })}
       </div>
 
-      {/* ใครโอนให้ใคร */}
-      <div className="bg-gray-800 rounded-2xl p-4 mt-6">
+      <div className="bg-gray-800 rounded-2xl p-4 mt-6 mb-6">
         <h2 className="font-semibold mb-3">💸 ใครต้องโอนให้ใคร</h2>
         {transfers.length === 0 && <p className="text-gray-500">ยังไม่มีหนี้ หรือเสมอกันหมดแล้ว ✅</p>}
         {transfers.map((t, index) => (
