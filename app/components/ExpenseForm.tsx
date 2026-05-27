@@ -94,7 +94,7 @@ export default function ExpenseForm({ going, tripId, onUpdate }: Props) {
             placeholder="ชื่อคุณ (คนที่เพิ่มรายการนี้)"
             value={myName}
             onChange={e => setMyName(e.target.value)}
-            />
+        />
 
         {/* เลือกคนร่วมจ่าย */}
         <div className="bg-gray-700 rounded-lg p-3">
